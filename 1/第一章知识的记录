@@ -1,0 +1,195 @@
+#include <iostream>
+using namespace std;
+template <typename T>bool make2Array(T ** &x,int numberOfRows,int rowSize[]){//注意第一个形参，这个必须是
+    //指针的引用，如果单纯的是指针的话，那么在下面第一个过程中，x就指向其他地址了，所以被传进来的参数
+    //就没有被它使用了。所以当程序中需要使用传进来的指针进行地址的改变的时候，必须得传指针的引用，或者
+    //指针的指针。
+    try{
+        x = new T *[numberOfRows];//这是一个数组，数组的成员是指向T的指针，必须得这样，因为x是个char的二级指针
+        for(int i = 0;i != numberOfRows;i++){
+            x[i] = new T [rowSize[i]];
+            for(int j=0;j!=rowSize[i];j++){
+                x[i][j]='1';
+            }
+         }
+        return true;
+    }catch(bad_alloc){
+        return false;
+    }
+}
+
+int main()
+{
+    char **a;
+    int size[2]={4,5};
+    cout<<"sizeof(char *)"<<sizeof(char *)<<endl;//指针的大小是8个字节
+    cout<<"sizeof(char **)"<<sizeof(char **)<<endl;//指针的字节是8个字节
+    cout<<"sizeof(char)"<<sizeof(char)<<endl;//char类型的字节是1个字节
+    cout<<make2Array(a,2,size)<<endl;
+    cout<<"sizeof(decltype(size))"<<sizeof(decltype(size))<<endl;//注意decltype得到的类型是int *，所以是一个
+                                                                //指针的大小为8字节
+    cout<<"sizeof(size)"<<sizeof(size)<<endl;//size的大小是size这个数组所占的内存的大小，是两个int,为4*2字节
+    cout<<"sizeof(size[0])"<<sizeof(size[0])<<endl;//size[0]其实返回的是int的类型的大小,4字节
+    cout<<"sizeof(int)"<<sizeof(int)<<endl;//
+    for(int i=0;i!=sizeof(size)/sizeof(decltype(size[0]));i++)//decltype(size[0])返回的是size[0]这个对象的类型，为int
+                                                            //其实这个for循环的第二部分也可以写成
+                                                            //sizeof(size)/sizeof(size[0])
+    {
+        for(int j=0;j!=size[i];j++)
+            cout<<a[i][j]<<',';
+        cout<<endl;
+    }
+    return 0;
+}
+从这个例子中我们可以学到以下几点知识:
+	(1)	首先二维数组，其实仅仅是数组的数组，也就是说，每一行的大小是根据第二个数组的大小决定的。其实类似下面这样的结构:
+			--->[][][][][][][][]
+			--->[][][]][][][]
+			--->[][][][][][]
+			--->[][][][]
+上面箭头左边是第一个数组，方括号表示的是第二个数组。也就是说，二维数组既可以是3X4这种；也可以是第一行是3，第二行是5，所以二维数组
+就是一个数组的数组而已。
+	(2)	sizeof()这个表达式，可以有两种参数。一种参数是数据类型；一种是数据对象(数组的对象，类的对象之类的)，注意，如果你把内置数据
+类型的对象给sizeof，那么返回的其实是这个内置类型的大小。
+	(3)	decltype得到的是你表达式的类型，但是如果给它一个数组的对象（假设一维数组)，那么返回的其实是一个指针的大小（指针的大小是8字节)
+	(4)	当你的函数需要对传进来的指针进行地址转换的时候，那么函数的形参一定是指针的指针或者指针的引用。因为如果单纯的是指针的话，那么
+形参形参指向的地址的话，实参的指针是不会改变其指向的原地址的！形参指针只是用来改变实参所指向的内存的值，但是不会改变实参指向的地址。
+
+#include <iostream>
+using namespace std;
+size_t min(const size_t lval,const size_t rval){
+    return lval < rval ? lval : rval;
+}
+template <typename T> bool changeLength1D(T * &x,size_t oldLength,size_t newLength){
+    try{
+        if(newLength <0)
+            throw length_error("newLength must >0");
+        auto new_space = new T [newLength];
+        size_t number = min(oldLength,newLength);
+        copy(x,x+number,new_space);
+        delete [] x;
+        x = new_space;
+        return true;
+    }catch(bad_alloc){
+        cout<<"bad_alloc"<<endl;
+        return false;
+    }
+}
+int main()
+{
+    auto old_array = new char [10]{'a','b'};
+    cout<<changeLength1D(old_array,10,20)<<endl;
+    for(int i=0;i!= 10;i++)
+        cout<<old_array[i]<<",";
+    cout<<endl;
+    for(int i = 0;i != 20;++i){
+        if(i<=1)
+            old_array[i]=old_array[i]+1;
+        else
+            old_array[i]='l';
+    }
+    for(int i = 0;i != 20;++i)
+        cout<<old_array[i]<<",";
+    auto old_int_array = new int [10]{0,1,2,3,4,5,6,7,8,9};
+    cout<<changeLength1D(old_int_array,10,20);
+    for(int i = 0;i != 20;++i)
+        cout<<old_int_array[i]+1<<',';
+    return 0;
+}
+通过这个给数组扩容的程序，可以知道：
+	(1)	首先给一个静态的数组扩容是错误的，因为其本身是一个静态的了，大小固定了！
+	(2)	给数组扩容只能是这个数组是动态内存分配的。
+	
+关于模板函数中数组形参以及数组的引用的问题小结，我写在了博客里边了，可以去看看:
+	https://blog.csdn.net/qq_34988341/article/details/106452518
+
+				int a[10];
+这个就是一个数组的定义。它是由数据类型int，以及维度大小10组成的。所以，一个数组是一个维度确定的，其大小是不能改变的。而且，数组的维度是数组的一部分。所以你在声明数组的引用的时候一定要对其维度的大小进行描述:
+
+				int (&b)[10] = a;
+这个就是一个数组的引用。其中上面的(&b)中的括号必须得有。因为如果不加的话，根据优先级的情况，那么b就是一个大小为10的数组，其里面存的是int 类型的引用了。而且，后面的[10]也必须具有，因为数组是复合类型的。所以必须要具有数据类型和其维度大小的。
+在函数的形参中，一般实参是数组的话，传递给形参的时候会变成相应的指针。如果你的形参要是指针的话，可以指向任何维度的数组。但是你要想让你的实参只指向一个指定大小的维度的时候，这个时候需要使用数组的引用：
+
+#include <iostream>
+
+void print(int *a){
+    for(int i = 0; i != 10;++i){
+        std::cout<<a[i]<<std::endl;
+    }
+}
+void printfshuzu(int a[10]){
+    for(int i = 0; i != 10;++i)
+        std::cout<<a[i]<<std::endl;     
+}
+void printfzhizhen(int (&a)[10]){
+    for(int i = 0;i != 10;++i)
+        std::cout<<a[i]<<std::endl;
+}
+int main()
+{
+    int a[10]={1,2,3,4,5,6,7,8,9,10};
+    int b[20] = {1,2,3,4,5,6,7,8,9,10,1,2,3,4,5,6,7,8,9,10};
+    print(a);
+    print(b);
+    std::cout<<"printf the shuzu "<<std::endl;
+    printfshuzu(a);
+    printfshuzu(b);
+    std::cout<<"printfzhizhen"<<std::endl;
+    printfzhizhen(a);
+    printfzhizhen(b);
+    return 0;
+}
+比方说，上面的三个print函数，第一个的形参是一个指针，所以它可以指向任意大小的一维数组。也就是说a,b都可以打印出来。然后，第二个print的形参是一个int a[10]，但是在编译器编译的时候，它会自动忽略这个一维的大小，然后就变成了一个指针的类型。所以跟第一个函数是一样的。但是如果是二维的话，就要注意了，比方说int a[10][10]。它会忽略第一个10，但是不会忽略第二个10，也就是说你的数组传进来的必须是第二维的大小是10的数组，而第一维可以被忽略了。但是形参如果是int **的话，就无所谓了，只要你的数组是二维的就可以，不管它们的维度是多少。它都可以指向。然后讨论下第三个print函数。这里的形参是一个int (&a)[10]是一个对数组的引用。所以这个时候，你传进来的数组的大小就必须是10大小的。这个就严格控制了你的数组的维度大小了。
+接下来我们讲一下，函数模板中类型隐式转换规则：
+
+    1.const转换：可以将一个非const对象的引用转(指针)传递给一个const的引用(或指针)形参。
+    2.数组或函数指针转换：如果函数形参不是引用类型（注意不是引用类型的才可以)，则可以对数组或函数类型的实参应用正常的指针转换（也就是数组或函数传给形参的时候是隐式转换成指针的），一个数组实参可以转换成一个指向其首元素的指针。类似的一个函数实参可以转换为一个该函数类型的指针。
+
+			template<typename T> T fobj(T,T);	//实参被拷贝
+			template<typename T> T fref(const T&,const T&);//引用
+			string s("a value");
+			const string s2("another value");
+			
+			fobj(s1,s2);		//调用fobj(string,string);const被忽略
+			fref(s1,s2);		//调用fref(const string &,const string &)将s1转换成const是允许的
+			int a[10],b[42];
+			fobj(a,b);		//调用f(int *,int *);数组隐式转换可以的，因为不是引用类型
+			fref(a,b);		//错误：数组的类型不匹配，因为这个fref是引用的类型的，所以，这个时候，a,b不会被隐式转换，也就是这样传入进去的时候
+							//其实就是两个数组类型的，一个是int [10]，一个是int [42]；所以是不匹配的。
+所以，在模板函数的形参的时候，一定要注意数组的隐式转换规则。要不然就很容易出错
+
+n位数的排列递归算法:
+	大致思想是这样的:首先，在一个集合E={x1,x2,x3,x4,...xn}里边，有n!种对这些元素的排列方法。递归思想是这样的，我们首先取出一个元素(xi)，然后剩下的
+元素组成的集合称为Ei={x1,x2,x3,...xi-1,xi+1,...xn};令Pre(X)表示集合组成的所有排列。令xi.Prem(X)表示在Prem(X)中每一个排列上加上前缀xi的排
+列表。例如，E={a,b,c}，则首先先摘出一个元素x1=a，然后剩下的元素组成一个E1={b,c}；然后Prem(E1)表示的就是{bc,cb}，所以x1.Prem(X)=a.{bc,cb}=abc,acb;
+	根据这个思想可以得出:一个集合E，可以由e1.Prem(E1)，e2.Prem(E2),...en.Prem(En)组成。然后，Prem(E1)，Prem(E2)....Prem(En)又可以由摘出
+其他元素来表示。所以是一个这样的递归。递归终结的条件就是:最后的一个集合中只剩下一个元素了，这个时候就可以输出了。
+	所以如下所示的函数一样:
+		template<typename T> void recursive::permutations(T list[],int k,int m)const{
+			if(k==m){
+				std::copy(list,list+m+1,std::ostreambuf_iterator<T>(std::cout));
+				std::cout<<std::endl;
+			}
+			else{
+				for(int i = k;i <= m;++i){
+				    std::swap(list[k],list[i]);//这个是把一个元素，拿出来，然后，剩下的组成一个集合
+				    /*首先，我们先找出一个元素，将这个元素放到数组的第一个位置，然后，将剩下的元素，继续使用本函数去递归，将其拆分。
+				    比方说现在是{a,b,c}数组的话，那首先先把自己数组的第一个元素(a)拿出来，将剩下的元素组成一个集合(这里使用的是
+				    原先的数组，不过，利用k+1去从数组的下一个位置开始进行组合（其实就是剩下的元素的集合)。然后，在进入这个函数的时候
+				    for循环是处理{b,c}这两个元素组成的集合了。因为这个集合中元素不是只有一个，所以继续拆分，这个时候，继续交换第一个
+				    元素到数组的当前的位置（也就是b,c这个数组的第一个位置，虽然输入的数组是{a,b,c}，但是下标是原先数组开始的位置+1，也就是
+				    {b,c}这个数组了。接下来将{b,c}拆分，拆完以后，发现只剩下一个{b}/{c}元素了，所以就进入k==m这个条件。然后，将数组
+				    放入到std::cout流输出。因为刚开始的时候，交换的都是本身，所以第一个输出的是abc。当输出完abc以后，返回到上一个调用
+				    permutations位置，也就是{b,c}的位置，这个时候，i=k=1。然后接着执行了一个swap(list[k],list[i])，意思就是说，我把
+				    刚才这个调用的元素恢复到原先的位置。然后，接着i++，这个时候for的条件还是成立。所以交换swap(list[1],list[2])；也就是
+				    集合变成了{c,b}，然后接着去执行permutations，发现是一个元素所以输出的结果就是acb，然后返回到swap，再把恢复到原先的顺序。
+				    这个时候，最开始执行的for循环执行完一次循环，然后i++=1，所以交换第一个元素与第二个元素。然后剩下的集合是{a,c}然后接着
+				    去拆分之类的，所以第二次循环输出的两个为bac,bca
+				    */
+				    permutations(list,k+1,m);//剩下的数据组成的集合
+				    std::swap(list[k],list[i]);//处理完第一个位置的元素以后，再换回来，恢复原样   
+				}
+			}
+		}
+然后这里注意一个细节就是ostreambuf_iterator<T>(std::cout)，这个模板类的详细介绍为:
+				http://www.cplusplus.com/reference/iterator/ostreambuf_iterator/

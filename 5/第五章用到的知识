@@ -1,0 +1,586 @@
+									STL function in C++11
+1.std::copy
+				template<class InputIterator, class OutputIterator>
+				  OutputIterator copy (InputIterator first, InputIterator last, OutputIterator result)
+				{
+				  while (first!=last) {
+					*result = *first;
+					++result; ++first;
+				  }
+				  return result;
+				}
+从这个方法中可以看出:前两个参数是一个表示序列范围的迭代器或者适配器或者指针。然后第三个参数表示的是你想要把你的序列拷贝到哪的
+一个初始的位置。
+first,last
+	Input iterators to the initial and final positions in a sequence to be copied. The range used is [first,last), which contains all the elements between first and last, including the element pointed by first but not the element pointed by last.
+注意:前两个参数表示的范围是[first,last);
+result
+	Output iterator to the initial position in the destination sequence.
+	This shall not point to any element in the range [first,last).
+例子:
+				// copy algorithm example
+				#include <iostream>     // std::cout
+				#include <algorithm>    // std::copy
+				#include <vector>       // std::vector
+
+				int main () {
+				  int myints[]={10,20,30,40,50,60,70};
+				  std::vector<int> myvector (7);
+
+				  std::copy ( myints, myints+7, myvector.begin() );
+
+				  std::cout << "myvector contains:";
+				  for (std::vector<int>::iterator it = myvector.begin(); it!=myvector.end(); ++it)
+					std::cout << ' ' << *it;
+
+				  std::cout << '\n';
+
+				  return 0;
+				}
+
+Output:
+myvector contains: 10 20 30 40 50 60 70
+
+2.std::copy_backward
+	template<class BidirectionalIterator1, class BidirectionalIterator2>
+	  BidirectionalIterator2 copy_backward ( BidirectionalIterator1 first,
+		                                     BidirectionalIterator1 last,
+		                                     BidirectionalIterator2 result )
+	{
+	  while (last!=first) *(--result) = *(--last);
+	  return result;
+	}
+Copies the elements in the range [first,last) starting from the end into the range terminating at result.
+The function returns an iterator to the first element in the destination range.
+The resulting range has the elements in the exact same order as [first,last). To reverse their order, see reverse_copy.
+The function begins by copying *(last-1) into *(result-1), and then follows backward by the elements preceding these, until first is reached (and including it).
+The ranges shall not overlap in such a way that result (which is the past-the-end element in the destination range) points to an element in the range (first,last]. For such cases, see copy.
+
+first,last
+	Bidirectional iterators to the initial and final positions in a sequence to be copied. The range used is 		[first,last), which contains all the elements between first and last, including the element pointed by first 		but not the element pointed by last.
+
+这个函数的意思是将序列[first,last)拷贝到第三个参数表示的序列中，不过是从第三个参数开始往前拷贝，不是往后拷贝。
+
+3.std::reverse_copy
+	template <class BidirectionalIterator, class OutputIterator>
+  	OutputIterator reverse_copy (BidirectionalIterator first,
+                               BidirectionalIterator last, OutputIterator result)
+	{
+	  while (first!=last) {
+		--last;
+		*result = *last;
+		++result;
+	  }
+	  return result;
+	}
+
+first,last
+	Bidirectional iterators to the initial and final positions of the sequence to be copied. The range used is 		[first,last), which contains all the elements between first and last, including the element pointed by first 		but not the element pointed by last.
+Bidirectional:双向的
+result
+	Output iterator to the initial position of the range where the reversed range is stored.
+	The pointed type shall support being assigned the value of an element in the range [first,last).
+// reverse_copy example
+#include <iostream>     // std::cout
+#include <algorithm>    // std::reverse_copy
+#include <vector>       // std::vector
+
+int main () {
+  int myints[] ={1,2,3,4,5,6,7,8,9};
+  std::vector<int> myvector;
+
+  myvector.resize(9);    // allocate space
+
+  std::reverse_copy (myints, myints+9, myvector.begin());
+
+  // print out content:
+  std::cout << "myvector contains:";
+  for (std::vector<int>::iterator it=myvector.begin(); it!=myvector.end(); ++it)
+    std::cout << ' ' << *it;
+
+  std::cout << '\n';
+
+  return 0;
+}
+
+reverse_copy表示的是将你的序列倒叙拷贝到你的初始地址的序列中的
+
+4.std::ostream_iterator
+	template <class T, class charT=char, class traits=char_traits<charT> >
+  	class ostream_iterator :
+		public iterator<output_iterator_tag, void, void, void, void>
+	{
+	  basic_ostream<charT,traits>* out_stream;
+	  const charT* delim;
+
+	public:
+	  typedef charT char_type;
+	  typedef traits traits_type;
+	  typedef basic_ostream<charT,traits> ostream_type;
+	  ostream_iterator(ostream_type& s) : out_stream(&s), delim(0) {}
+	  ostream_iterator(ostream_type& s, const charT* delimiter)
+		: out_stream(&s), delim(delimiter) { }
+	  ostream_iterator(const ostream_iterator<T,charT,traits>& x)
+		: out_stream(x.out_stream), delim(x.delim) {}
+	  ~ostream_iterator() {}
+
+	  ostream_iterator<T,charT,traits>& operator= (const T& value) {
+		*out_stream << value;
+		if (delim!=0) *out_stream << delim;
+		return *this;
+	  }
+
+	  ostream_iterator<T,charT,traits>& operator*() { return *this; }
+	  ostream_iterator<T,charT,traits>& operator++() { return *this; }
+	  ostream_iterator<T,charT,traits>& operator++(int) { return *this; }
+	};
+用法:
+	// ostream_iterator example
+	#include <iostream>     // std::cout
+	#include <iterator>     // std::ostream_iterator
+	#include <vector>       // std::vector
+	#include <algorithm>    // std::copy
+
+	int main () {
+	  std::vector<int> myvector;
+	  for (int i=1; i<10; ++i) myvector.push_back(i*10);
+
+	  std::ostream_iterator<int> out_it (std::cout,", ");
+	  std::copy ( myvector.begin(), myvector.end(), out_it );
+	  return 0;
+	}
+
+5:std::ostreambuf_iterator
+	template <class charT=char, class traits=char_traits<charT> >
+	  class ostreambuf_iterator :
+		public iterator<output_iterator_tag, charT,
+		                typename traits::off_type, charT*, charT&>
+	{
+	public:
+	  typedef charT char_type;
+	  typedef traits traits_type;
+	  typedef typename traits::int_type int_type;
+	  typedef basic_streambuf<charT,traits> streambuf_type;
+	  typedef basic_ostream<charT,traits> ostream_type;
+
+	  ostreambuf_iterator(ostream_type& s) throw(): sbuf_(s.rdbuf()) { }
+	  ostreambuf_iterator(streambuf_type* s) throw(): sbuf_(s) { }
+	  ostreambuf_iterator& operator= (charT c)
+	  { if (!failed()) last=sbuf_->sputc(c); return *this; }
+
+	  ostreambuf_iterator& operator*() { return *this; }
+	  ostreambuf_iterator& operator++() { return *this; }
+	  ostreambuf_iterator& operator++(int) { return *this;}
+
+	  bool failed() const throw() { return last==traits::eof(); }
+
+	private:
+	  streambuf_type* sbuf_;
+	  charT last;
+	  
+	};
+
+关于类，继承，以及类作用域的一些自我理解
+#include <iostream>
+class Base{
+public:
+    Base(){}
+    virtual int fcn(){
+        std::cout<<"this is the Base's virtual fcn()"<<std::endl;
+    }
+//    int a;
+};
+class Derived : public Base{
+public:
+    Derived(){}
+    int fcn(int){
+        std::cout<<"this is the Derived's fcn(int)"<<std::endl;
+    }
+    virtual void f2(){
+        std::cout<<"this is the Derived's virtual f2()"<<std::endl;
+    }
+//private:
+    //int c;
+
+};
+class D2 : public Derived{
+public:
+    int fcn(int){
+        std::cout<<"this is the D2's fcn(int)"<<std::endl;
+    }
+    int fcn(){
+        std::cout<<"this is the same of the Base's virtual"<<std::endl;
+    }
+    void f2(){
+        std::cout<<"this is overried the Derived's virtual f2()"<<std::endl;
+    }
+
+};
+//下面的例子简单的说明了生成的拷贝函数/赋值操作函数都支持相应的类对象的派生类
+//向基类转换。
+int main()
+{
+    //Derived a(10,20);
+    //Base b(a);
+    //std::cout<<b.a<<std::endl;
+    Base bobj;Derived d1obj;D2 d2obj;
+
+    Base *bp1 = &bobj,*bp2 = &d1obj,*bp3 = &d2obj;
+
+    bp1->fcn();
+    bp2->fcn();
+    bp3->fcn();
+
+    Derived *p1 = &d1obj;D2 *p2 = &d2obj;
+
+    p1->fcn();//报错
+    p1->fcn(42);
+    p2->fcn(42);
+    return 0;
+}
+首先谈下类:
+	类其实就是一个作用域的概念。我在我的类内，我的所有的成员都是可见的。不管它是私有的，公有的还是保护的。但是在类外边（可以理解为类的用户，也就是
+类的对象）却只能访问一些特定的成员（这些成员是被用访问权限符，也就是public,private,protected所定义的）。所以，public,private,protected
+这些在类内使用的权限访问符，只是用来限制类的用户的，可以让类的用户看到什么，看不到什么，是类的设计者所决定的（通过类的访问权限符实现的）。其实类整体就是
+一个大的作用域而已。
+再谈下继承类:
+	继承类（派生类）其实也是一个作用域，不过这个作用域是包含在基类的作用域中的可以如下面的图表示的一样:
+					|								|
+					|		------------			|
+					|		|	B	   |		A	|
+					|		|__________|			|
+					|_______________________________|
+A是基类，B是派生类。所以说的那些继承，其实就是B可以访问A的除了(private)部分以外所有的成员而已。也就是把B放在了A的一个内部的作用域而已了。这就可以
+让B在作用域内访问到A的成员（除了private)。但是这个时候需要注意的一点是:
+	如果B中有一个函数与A中的重名了（即使是参数列表不一样），那么A中的函数就会被隐藏（其实不在类内也是一样的，内层重名的变量会隐藏外层同名的变量
+）。所以，如果通过B调用重名的函数的时候一定要注意了，只能使用B中的相同的名字的函数了（如果也想使用A中的话，那么只能使用A::f或using A::f来显示使用了
+，其实就是改变了下作用域而已，如果使用using的时候，其实就是将A中的f和B中的f放在了同一个作用域中去了，这个时候就是重载了！！！所以其实也没有那么复杂）。
+	还有一点就是对于继承类中的虚函数的，比如A中的虚函数是f()，然后B中没有设置相应的f()，而是设置了f(int)。注意这个时候其实就是隐藏了A中的虚函数。
+但是通过
+				A *p1 = &b;//b是B的一个对象
+				p1->fcn();//这样调用的时候实际是使用的A中的fcn了，因为B中没有对虚函数进行覆盖，只能使用A中的虚函数了。
+所以只有使用完整的参数列表一样的才能对虚函数进行覆盖，这样的时候基类的指针或引用才可以更好的动态去查找到底是谁在调用虚函数。
+
+关于new以及指针的知识:
+				int **temp = new int *[10];
+首先说一下，new int *[10];表示的是什么意思。这里首先说一下new。其实new 就是一个标志而已，用来告诉编译器我想要自己申请下
+一些内存。然后剩下的就是int *[10]这个就是一个很正常的数据类型了。表示的是一个数组，并且存储的是指向int类型的指针的。
+只不过这个变量是无名的，这是因为new产生的空间是没有名字的，所以无须给它一个名字。
+	所以new int* [10]表示的是产生一个内存空间，这个内存空间是可以存放10个指向int类型的指针的空间。但是注意，new返回的
+是一个指向该内存空间的地址的。所以左边的类型首先必须是一个指针类型的。但是内部存放的是指针，所以必须还得加一次指针，也就是
+指针的指针。
+这里再说一下，普通的指针:
+	指针就是指向一个变量；指针也是一个类型，也有地址和值。它的值保存的是别的变量的地址。它的地址是其在硬件中的位置。然后一般
+的变量的地址都是可以通过&取地址符来获得的。
+			int a = 10;int *p = &a;//通过&来获取a的地址
+但是有一些数据类型其本身就代表了地址。
+			int a[10] = {0,1}; int *pi = a;//a表示的是变量a[0]的地址，这个也可以用&a[0]来表示它们是等价的。
+再来讲一下指针的指针到底是什么东西！
+	首先指针也有地址的，指针也是一个数据类型。也由其自己的类型的（只不过它的类型是一个复合的，也就是T *)。所以我们可以
+定义一个指针来指向一个指针。但是如何表示呢？
+			int **p;//就是一个指向指针的指针，该怎么理解呢？
+还是老样子，按照从右向左看，首先看到的是*，那么该变量p表示的是一个指针，那么这个指针指向的数据类型是什么呢？接着往左看，发现
+又是一个*说明指向的是一个指针了，再往左看是int，所以表示的就是一个int类型的指针，也就是说int **p表示的是一个指针，指向的是
+一个指向int类型的指针。
+请注意：int *也是一个数据类型！！！和int类型不同的！！！
+			int *a = &b;
+			int **p = a;//这个是对的，表示p指向的是一个指针，该指针指向的是一个int类型的变量
+然后再回到存放指针的数组中去:
+			int *a = &b,*c = &b,*d = &b;
+			int *e[3] = {a,b,c};//这个表示的是数组中保存的都是指针
+			int **temp = e;//这个是对的
+			int *temp2 = e;//这个是错误的！！！！
+这里重点分析一下为什么int *temp2 = e;是错误的！！！首先我们要明白一个数组名，代表的是这个数组中的第一个元素的地址。所以第一个
+元素的地址是一个指针的地址，所以，你现在的int *temp2只是表示的是一个int类型的地址而不是一个int *的，所以必须是int **
+这些就是new int *[] 和 二维指针的关系了。
+
+改变二维动态数组大小的程序:
+
+#include <iostream>
+#include <iterator>
+template<typename T> void changeLength2D(T** &a,int oldRows,int newRows,int newColumns,int copyRows,int copyColumns){
+//注意，这里的那个第一个参数一定要是T** &a;//也就是引用或也可以是指针的指针的指针（不过这个时候传入的参数必须是&b）。因为如果只是单纯的是指向指针的指针的话，它只是让a和实参指向
+//的位置一样而已。但是最后需要a=temp，所以，a指向了新的temp，但是这个a只是形参，并没有改变传入进来的实参的指向。所以，我们可以使用&来直接操纵形参去
+//操纵实参改变指向的位置。（要是指针的指针的指针的话，传入的参数必须是指针的指针的地址也就是&b，然后最后的部分改成*a = temp;才可以）
+//其实就是如果是相同等级的话，通过形参是无法改变右边的指向的地址的，但是可以改变右边的值。但是要是比它高一级的话，就可以改变实参的指向的。
+    if(copyRows > newRows || copyRows > newColumns)
+        std::cout<<"error with the size"<<std::endl;
+    else{
+        T **temp = new T* [newRows];//创建一个指针数组，然后每一个指针指向一个一维数组。这样就构成了一个二维数组
+        for(int i = 0; i != newRows;++i)
+            temp[i] = new T[newColumns];//这个表示每个指针指向的数组的大小是多少的
+        for(int i = 0; i != copyRows;++i){
+            std::copy(a[i],a[i]+copyColumns,temp[i]);
+            std::copy(a[i],a[i]+copyColumns,std::ostream_iterator<T>(std::cout,","));
+            std::cout<<std::endl;
+            std::copy(temp[i],temp[i]+4,std::ostream_iterator<T>(std::cout,"-"));
+            std::cout<<std::endl;
+            delete []a[i];
+        }//这一步已经拷贝完了
+        //删除剩下的
+        for(int i = copyRows;i != oldRows;++i)
+            delete [] a[i];
+        //delete []a;
+        a = temp;
+    }
+}
+//下面的例子简单的说明了生成的拷贝函数/赋值操作函数都支持相应的类对象的派生类
+//向基类转换。
+int main()
+{
+    int a[4][4] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+    int **b = new int *[4];
+    for(int i = 0;i != 4;++i){
+        b[i] = new int [4];
+        std::copy(a[i],a[i]+4,b[i]);
+    }
+    changeLength2D(b,4,8,8,4,4);
+    for(int i = 0;i != 8;++i){
+        for(int j = 0; j != 8;++j)
+            std::cout<<b[i][j]<<"-";
+        std::cout<<std::endl;
+    }
+}
+
+
+
+template的介绍:
+	声明一个template的时候，可以不用写T:
+				template<typename T> class baseFriend;其等价于
+				template<typename>   class baseFriend;它们两个是一样的，可以不用写T。
+但是要注意，它们两个都必须要写template的参数列表;
+	template作为友元类的时候，可以与template类一对一进行友元关系，也可以进行一对所有的。这个时候，只是需要
+让template的友元的参数列表的类型和template类的参数列表的类型不一样即可:
+				template<typename T> class Base{
+					template<typename X> friend BaseFriend;//这个因为参数列表的类型不一样，一个是T，一个是X
+					//所以该模板友元是一对所有的Base模板实例的
+					friend BaseFriend2<T>;				  //这个因为BaseFriend2使用的参数类型是T和类的参数
+					//类型是一样的，所以只能是一对一的友元关系。
+					.....
+				};
+这个时候注意一下，如果你在模板类中要想定义一对所有的模板类实例的时候，需要自己加一个template<typename X>这个模板参数
+列表。因为加了这个模板参数列表，所以friend关键字要放在template<typename X>后面了。这个小细节注意一下。
+#include <iostream>
+template<typename> class baseFriend1;
+template<typename T>class base{
+friend class baseFriend1<T>;
+public:
+    base(T a):number(a){}
+    void print(){
+        std::cout<<"this is the base "<<number<<std::endl;
+    }
+private:
+    T number;
+};
+template<typename T>class baseFriend1{
+public:
+    baseFriend1()=default;
+    void printBase(const base<T> &a){
+        std::cout<<"this is the friend and the number of the base is "<<a.number<<std::endl;//友元函数必须借助其对应的类的对象去访问
+        //类的成员的
+    }
+};
+int main()
+{
+    base<double> a(19.5);
+    baseFriend1<int> b;
+    a.print();
+    b.printBase(a);
+    return 0;
+}
+
+#include <iostream>
+/*
+ *
+ * 
+    template<class T> class task;
+    template<class T> task<T>* preempt(task<T>*);
+
+    template<class T> class task {
+    friend void next_time();
+    friend void process(task<T>*);
+    friend task<T>* preempt<T>(task<T>*);
+    template<class C> friend int func(C);
+    friend class task<int>;
+    template<class P> friend class frd;
+    };
+
+ *其实理解，类模板的友元函数，首先得明白如何声明友元函数，以及类模板如何被实例化的。
+ *首先说下类模板是如何被实例化的，类模板要想被实例化，就必须得借助模板参数列表提供的
+ *参数类型，比方说我下面的base类模板，我就必须得到base<int> a;的时候才会产生相应的类
+ *这个时候要注意，只有模板类被实例化的时候，这个类才是被真正的实现的，以前没实例化的
+ *时候，只是一些声明而已；所以实例化以后我们才可以看到什么类型的友元被声明了。拿上面
+ *的例子来说的话，在模板类task中定义了好几种不同的友元。
+ *第一个友元next_time()是一个普通的函数，所以，当我们实例化不同的类型的task实例的时候，
+ *都会在各自的实例中声明该函数为友元函数，所以在所有的task实例中我们的next_time()都被
+ *声明成了一个友元函数。但是请注意这个申请为友元函数的过程，其实是在task的各自实例化
+ *过程中声明的，而不是一次就声明的，也就是说我的每一个task实例对应声明一个next_time()
+ *友元函数而已；接着看第二个友元，这个友元的形参是一个模板类task的指针。那它是怎么一
+ *回事呢？当我们实例化一个task<int>时（就拿int来说)。那么我的process的形参就被实例化成
+ *task<int> *的类型了。所以也就是说，我的process是一对一的友元函数类型。即，我的task<int>
+ *声明的是process(task<int> *)这个函数为友元。所以你的process(task<T> *)就得定义很多实际
+ *类型的函数。这个时候你只能使用重载函数的方式去定义各个类型process的函数。不能使用
+ *模板去实现这个重载的过程，因为这个process函数是一个普通的函数；接着看第三个友元。
+ *task<T>* preempt<T>(task<T> *);这个是一个模板函数作为一个友元。注意这个时候友元没有那个
+ *template<typename T>因为在这个类作用域内已经有了T了。所以不用定义并且，如果你使用
+ *template<T>的话也会报错，因为不能在同一个作用域内定义两个相同名的类型参数。好了，继续看
+ *第三个友元。当我们实例化一个task类时，我们也顺便实例话了一个preempt相同类型的函数。也就
+ *是说，第三个友元类表示的是我们实例化一个类型的task的时候，我们顺便实例化了一个相同类型的
+ *模板函数，该实例化的模板函数被声明成该类型的task的友元类。那这个与第二个有什么区别呢？
+ *因为第二个是一个普通的函数，所以你得重载相应类型的函数才可以去匹配相应类型的task类。但是
+ *第三个因为是一个模板函数。所以你可以定义这个模板，当定义一个int类型的task实例的时候，你只需要
+ *实例化你的preempt<int>为int类型的就可以了。这样就可以去访问你的int类型的task实例了。但是
+ *请注意，因为你的int类型的task只声明了int类型的preempt为友元，所以你只能使用int类型的preempt
+ *去访问int类型的task。如果使用不同类型的preempt，那么就不可以，会报找不到匹配的友元函数的。
+ *接着看第四个友元。这个友元表示的是一个模板函数，不过这个模板函数的模板参数列表是与类的模板参数
+ *列表不一样的。所以这个时候。当你实例化一个int类型的task的时候，它声明一个模板函数（这个模板的
+ *参数列表是与类的参数列表不一样）func为友元。所以这个友元函数表示的范围更大了。也就是说，
+ *当我们实例化一个int类型的task的时候，我们的模板func函数被声明成了一个友元。所以只要我实例化一个
+ *func，就可以去访问一个int类型的task。不管我的func被实例化成什么类型，即使是double(与int不一样的类型)
+ *类型实例化的func也可以去访问int类型实例化的task。所以第四个表示的是，我们只要实例化一个类型的task，
+ *那么我的所有实例化的func都可以访问被实例化的task(但是只有被实例化task的对象才可以)。接着看第五个
+ *友元。第五个class task<int>表示的是一个友元模板类，不过这个模板类已经被实例化了。所以，当我们实例化
+ *一个double类型的task时，我们的task<int>类就被声明成一个友元类了。所以只要实例化一个类型的task，那么
+ *我的task<int>模板类就被声明成相应的友元函数了。也就是说我的task<int>模板类可以是任意被实例化的task
+ *的友元类；但是注意，只有task<int>是别的被实例化的task累的友元，其他类型的就不是了。接着看第六个友元。
+ *template<class P> friend class frd；这个也是一个模板类。但是注意，这个模板类的模板参数列表和类task
+ *的模板参数列表不一样。也就是当我们实例化一个int类型的task时，我们的frd模板类被声明成了一个友元类。这个
+ *跟不同参数列表的模板函数是一样的。所以我的任意类型的frd实例是任意被实例化task的友元类了。这也就是多对多的
+ *关系了。
+ *
+ */
+
+template<typename> class baseFriend1;
+template<typename U> class baseFriendToAll;
+template<typename T> class baseFriendAllToOne;
+
+//
+template<typename T>class base{
+//友元模板类
+friend class baseFriend1<T>;
+template<typename X> friend void baseFriendToAll<X>::printBase(const base<X> &a);
+friend class baseFriendAllToOne<int>;
+/*
+ * 友元函数还有一种形式，就是使用模板函数作为友元函数，这个时候就会有两种形式，一种是我的友元模板的参数列表使用的是
+ * 该模板类的参数列表；另一种形式是友元模板参数列表使用的是与类的参数列表不一的；下面的是第二种:
+ * template<typename X> friend void printByFunctionAllToOne(const base<X> &a);
+ * 这种方式的话，可以这样去理解
+ */
+template<typename X> friend void printByFunctionAllToOne(const base<X> &a);//模板函数实现多个类实例，对应一个模板函数实例
+//关于这个非模板的友元类一些注意事情:
+/*
+ *这个非友元模板的定义，其实它的作用我目前理解到的是这样的:
+ 假如以前的话，如果要想对不同类型实例化的类的话，那么我的友元也应该声明成相应类型的实例的。所以需要写很多重载的声明
+ 但是，我们可以在类的模板中直接使用模板类型参数来直接先声明。这样可以在模板类中少写一些重载的友元函数的声明，
+ 但是你要注意，在你的友元函数的声明中，你就必须得重载这些友元函数了，也就是说你就必须指定相应的类型了。这就是:
+            void printByFunctionAllToOne(const base<int> &a);
+            void printByFunctionOneToOne(const base<double> &a);
+ */
+friend void printByFunctionOneToOne(const base<T> &a);//模板函数实现一个类实例对应一个模板函数
+
+friend void printByFunctionUseNoT();
+
+
+public:
+    base(T a):number(a){}
+    void print(){
+        std::cout<<"this is the base "<<number<<std::endl;
+    }
+private:
+    T number;
+};
+//普通的友元类
+template<typename T>class baseFriend1{
+public:
+    baseFriend1()=default;
+    void printBase(const base<T> &a){
+        std::cout<<"this is the friend and the number of the base is "<<a.number<<std::endl;//友元函数必须借助其对应的类的对象去访问
+        //类的成员的
+    }
+};
+//多对多的友元模板类
+template<typename X> class baseFriendToAll{
+public:
+    baseFriendToAll()=default;
+    void printBase(const base<X> &a){
+        std::cout<<"this is the baseFriendToAll "<<a.number<<std::endl;
+    }
+};
+//多对一的友元模板类
+template<typename T> class baseFriendAllToOne{
+public:
+    baseFriendAllToOne()=default;
+    void printAllToOne(const base<T> a){
+        std::cout<<"this is the allToOne"<<a.number<<std::endl;
+    }
+};
+
+template<typename T> void printByFunctionAllToOne(const base<T> &a){
+    std::cout<<"this is the function by the function "<<a.number<<std::endl;
+
+}
+
+//
+void printByFunctionOneToOne(const base<int> &a){
+    std::cout<<"this is the one to one function "<<a.number<<std::endl;
+}
+
+void printByFunctionOneToOne(const base<double> &a){
+    std::cout<<"this is the one to one funciont which is double "<<a.number<<std::endl;
+}
+
+void printByFunctionUseNoT(){
+    base<int> a(20);
+    base<double> b(20.3);
+    std::cout<<"this is the printByFunctionUseNoT : "<<a.number<<std::endl;
+    std::cout<<"this is the printByFunctionUseNoT double"<<b.number<<std::endl;
+}
+int main()
+{
+    base<int> a(20);
+    base<double> e(19.5);
+    baseFriend1<int> b;
+    baseFriendToAll<double> c;
+    baseFriendAllToOne<int> f;
+    e.print();
+    //f.printAllToOne(e);
+    f.printAllToOne(a);
+    //f.printAllToOne(e);
+    printByFunctionAllToOne(a);
+    printByFunctionAllToOne(e);
+    printByFunctionOneToOne(a);
+    printByFunctionOneToOne(e);
+    printByFunctionUseNoT();
+    return 0;
+}
+
+
+关于类和友元的一些知识:
+	类就是一个最大的范围，我们都是通过类的对象去使用一些类的操作的。但是在类的成员函数之中，我们却可以通过类的对象去访问其所有的成员。
+不管这个成员是私有的还是保护的等等。其实就是说:
+	只要在类的作用域中，这个类就可以访问其所有的成员（可以是this的，也可以别的不同的对象（但是这个对象是本来的））。比如
+  210 template<typename T> void arrayList<T>::swap(arrayList<T> &theList){
+  211     //其中下面这三个参数都是类的保护成员，但是因为我在类的作用域范围内，所以我可以通过
+  		  //该类的对象(theList)去访问这个类的保护成员。正是因为这个是在类的作用域范围内。
+  		  //但若是在类的非作用域外，我们就不可以通过用户theList去访问受保护的成员了。
+  		  //比如说我是在main中使用theList去访问我的受保护的成员就会报错。
+  		  //其实这个和友元是一样的，我的友元也可以通过类的对象去访问类的私有和保护成员的!!!
+  214     std::swap(arrayLength,theList.arrayLength);
+  215     std::swap(listSize,theList.listSize);
+  216     std::swap(element,theList.element);
+  217     std::cout<<"in the class's function member we can use the protected member
+          "<<theList.listSize<<std::endl;
+  218     /*
+  219     int tempArrayLength = arrayLength;
+  220     arrayLength = theList.capacity();
+  221     theList.changArrayLength(tempArrayLength);//交换了两者的数据的总长度
+  222     
+  223     int tempListSize = listSize;
+  224     listSize = theList.size(); 
+  225     theList.changListSize(tempListSize);//交换了两者的数据的元素的长度
+  226     
+  227     T *temp = element;
+  228     element = theList.getElement();
+  229     theList.getElement() = temp;
+  230     */
+  231 }

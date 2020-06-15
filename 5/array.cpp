@@ -1,0 +1,413 @@
+#include "array.h"
+#include <sstream>//注意:ostringstream是在sstream中的
+#include <iterator>
+
+class illegalParameterValues : public std::length_error{
+public:
+    explicit illegalParameterValues(const std::string &s):length_error(s){}
+    
+};
+template<typename T>void changeLength1D(T* &a,int oldLength,int newLength){
+    //第一个参数必须是引用，这样才可能使a可以去修改实参的指向的地址
+    if(newLength <0 )
+        throw illegalParameterValues("new length must be >= 0");
+    T* temp = new T[newLength];  
+    //这个changeLength的作用是，比方以前我的数组大小是5,现在新的长度
+    //是10，那好，我直接复制原先的动态数组给新的动态数组就好了，注意
+    //这个时候的number是小的，也就是oldLength
+    //如果我的新的长度是3，那么我就得将原先的动态数组的前三个复制到
+    //新的动态数组中，这个时候我的number也是小的。所以我们必须取小的
+    //长度来进行复制拷贝。主要是为了防止我在拷贝原先的动态数组的时候
+    //出现访问位置的越界。
+    int number = std::min(oldLength,newLength);
+    std::copy(a,a+number,temp);//copy函数将一个序列的范围拷贝给第三个参数代表的序列中
+    delete []a;//释放掉原先的内存
+    a = temp;//将a指向新的内存中去
+}
+template<typename T> void changeLength2D(T** &a,int oldRows,int copyRows,int copyColumns,int newRows,int newColumns){
+    //注意，第一个参数必须是引用!!!
+    //这个表示的是改变二维数组的大小的程序,
+    //newRows表示的是新的是多少行，而newColumns是新二维数组是多少列
+    //copyRows表示的是要复制多少行，copyCloumns表示的是复制多少列
+    if(copyRows > newRows || copyColumns > newColumns)
+         throw illegalParameterValues("new dimensions are too small");
+    T **tmp = new T*[newRows];//T指向的是一个数组的指针（也就是一个而为指针)
+    //表示的是数组的大小是newRows,也就是表示有多少行
+    for(int i = 0; i != newRows; ++i){
+        tmp[i] = new T[newColumns];
+    }
+    //copy from old space to new spacemm,delete old space
+    for(int i = 0; i != copyRows;++i){
+        std::copy(a[i],a[i]+copyColumns,tmp[i]);
+        delete [] a[i];
+    }
+    //delete remaining rows of a
+    for(int i = copyRows; i != oldRows;++i){
+        delete [] a[i];
+    }
+    delete [] a;
+    a = tmp;
+}
+template<typename T>void arrayList<T>::checkIndex(int theIndex)const{
+    if(theIndex<0 || theIndex >= listSize)//这个判断条件是保证theIndex在有元素的范围之内
+        throw illegalParameterValues("the index must be >=0 and < listSize");
+}
+template<typename T> T& arrayList<T>::get(int theIndex)const{
+    checkIndex(theIndex);//先检查下下标是否在索引范围之内
+    return element[theIndex];
+}
+template<typename T> int arrayList<T>::indexOf(const T &theElement)const{
+    //返回元素theElement第一次出现时的索引
+    //若该元素不存在，则返回-1
+    //查找元素theElement
+    int theIndex = 10;//(int)(std::find(element,element+listSize,theElement) - element);
+    if(theIndex == listSize)
+        return -1;
+    return theIndex;
+}
+//构造函数的实现部分
+template<typename T> arrayList<T>::arrayList(int initialCapacity):arrayLength(initialCapacity),listSize(0){
+    //注意，当你的成员函数在类内有默认实参的时候，那么在类外实现的时候，一定不要再写上默认实参的值了
+    if(initialCapacity<1){
+        std::ostringstream s;
+        s << "Initial capacity = "<<initialCapacity << "Must be > 0";
+        throw illegalParameterValues(s.str());
+    }
+    element = new T[arrayLength];
+}
+template<typename T> arrayList<T>::arrayList(const arrayList<T> &theList){
+    //拷贝构造函数
+    arrayLength = theList.arrayLength;
+    listSize = theList.listSize;
+    delete []element;//删除原先的内存空间
+    element = new T[arrayLength];
+    std::copy(theList.element,theList.element+listSize,element);
+}
+//erase的下标是真正想要删除的动态数组的下标的
+template<typename T> void arrayList<T>::erase(int theIndex){
+    checkIndex(theIndex);//首先判断该索引是否有效
+    std::copy(element+theIndex+1,element+listSize,element+theIndex);
+    element[--listSize].~T();//析构一个存放元素的内存,并且改变
+    //数组中元素的个数.这个的原理是将要删除的元素拷贝到当前的位置
+    //然后把最后一个位置的元素删除掉就好了，因为最后一个位置的元素
+    //没有了。
+}
+template<typename T> void arrayList<T>::insert(int theIndex,const T& theElement){
+    //在索引theIndex处插入元素theElement
+    if(theIndex < 0 || theIndex > listSize){
+        //无效索引
+        std::ostringstream s;
+        s << "index = " <<theIndex<<" size = "<<listSize;
+        throw illegalParameterValues(s.str());
+    }
+    //有效索引，确定数组是否已满
+    if(listSize == arrayLength){
+        changeLength1D(element,arrayLength,2*arrayLength);
+        arrayLength *= 2;//改变你的数组的长度大小
+    }
+    //把元素向右移动一个位置
+    std::copy_backward(element+theIndex,element+listSize,element+listSize+1);
+    //倒叙拷贝
+    element[theIndex] = theElement;//插入到相应的位置
+    listSize++;
+}
+template<typename T> void arrayList<T>::output(std::ostream &out)const{
+    std::copy(element,element+listSize,std::ostream_iterator<T>(out,", "));
+    //注意,这个ostream_iterator是包含在iterator中的，需要包含这个头文件
+}
+template<typename T> std::ostream &operator<<(std::ostream &out,const arrayList<T> &x){
+    x.output(out);
+    return out;
+}
+//这些功能是习题中新增加的
+
+
+template<typename T> void arrayList<T>::trimToSize(){
+    if(listSize == arrayLength)
+        return;//如果数组被填满了，那么就不用精简数组了
+
+    int newlength = std::max(1,listSize);
+    changeLength1D(element,listSize,newlength);
+    arrayLength = newlength;
+
+}
+
+template<typename T> void arrayList<T>::setSize(int newLength){
+    //如果设置的新的数组的长度大于原先的数组的长度的话，我们直接保留
+    //原先数组中的元素，只是让数组的长度增加就好了
+    if(arrayLength <= newLength){
+        changeLength1D(element,arrayLength,newLength);
+        arrayLength = newLength;
+        //不需要改变动态数组的listSize
+    }
+    else{
+        changeLength1D(element,arrayLength,newLength);
+        arrayLength = listSize = newLength;
+    }
+}
+
+template<typename T> T &arrayList<T>::operator[](int index){
+    checkIndex(index);
+    return element[index];
+}
+
+template<typename T> const T &arrayList<T>::operator[](int index)const{
+    checkIndex(index);
+    return element[index];
+}
+
+template<typename T> bool operator==(const arrayList<T> &lhs,const arrayList<T> &rhs){
+    int index = 0;
+    if(lhs.size() != rhs.size())
+        return false;
+    for(;index != lhs.size();++index)
+        if(lhs[index] != rhs[index])
+            return false;
+    return true;
+}
+
+template<typename T> bool operator!=(const arrayList<T> &lhs,const arrayList<T> &rhs){
+    return !(lhs == rhs);
+}
+
+template<typename T> bool operator<(const arrayList<T> &lhs,const arrayList<T> &rhs){
+    int index = 0;
+    if(lhs.size() < rhs.size())//如果左边的listSize小于右边的listSize
+        return true;
+    else if(lhs.size() > rhs.size())//如果左边的listSzie大于右边的listSize
+        return false;
+    else{//如果两个的listSize一样的话，我们要按照字典顺序去比较了
+        for(;index != lhs.size();++index){
+            if(lhs[index] < rhs[index])
+                return true;
+        }
+    }
+    return false;
+}
+template<typename T> void arrayList<T>::push_back(const T &theElement){
+    //注意，在任何插入数据的时候，都需要首先判断下listSize和arrayLength是否一样
+    //如果一样的话，说明这次分配的内存空间已经被使用完了，需要改变下内存了
+    if(listSize == arrayLength){
+        changeLength1D(element,arrayLength,arrayLength * 2);
+        arrayLength *= 2;
+    }//分配完空间以后，直接在listSize上插入一个元素即可
+    element[listSize++] = theElement;
+}
+
+template<typename T> void arrayList<T>::pop_back(){
+    element[--listSize].~T();
+}
+
+/*
+template<typename T> void arrayList<T>::changArrayLength(int newArrayLength){
+    arrayLength = newArrayLength;
+}
+template<typename T> void arrayList<T>::changListSize(int newListSize){
+    listSize = newListSize;
+}
+template<typename T> T *&arrayList<T>::getElement(){
+    return element;
+}
+*/
+
+
+template<typename T> void arrayList<T>::swap(arrayList<T> &theList){
+    //注意，在类的作用域中（可以是成员函数中），可以通过类的不同对象去访问
+    //类的私有成员以及保护成员的。但是在类外的作用域中，是无法通过类的对象
+    //去访问类的私有成员的!!!这个跟友元一样。只要是在类的作用域内，我就可以
+    //通过不同的对象去访问类的私有成员和保护成员的。但是一定要注意，一定是在
+    //类的作用域之内才可以!!!
+    std::swap(arrayLength,theList.arrayLength);
+    std::swap(listSize,theList.listSize);
+    std::swap(element,theList.element);
+    std::cout<<"in the class's function member we can use the protected member "<<theList.listSize<<std::endl;
+    /*
+    int tempArrayLength = arrayLength;
+    arrayLength = theList.capacity();
+    theList.changArrayLength(tempArrayLength);//交换了两者的数据的总长度
+    
+    int tempListSize = listSize;
+    listSize = theList.size();
+    theList.changListSize(tempListSize);//交换了两者的数据的元素的长度
+    
+    T *temp = element;
+    element = theList.getElement();
+    theList.getElement() = temp;
+    */
+}
+template<typename T> void arrayList<T>::reserve(int theCapacity){
+    int newArrayLength =std::max(theCapacity,arrayLength);
+    changeLength1D(element,arrayLength,newArrayLength);
+    arrayLength = newArrayLength;
+
+}
+template<typename T> T arrayList<T>::set(int theIndex,const T& theElement){
+    checkIndex(theIndex);
+    T tmp = element[theIndex];
+    element[theIndex] = theElement;
+    return tmp;
+}
+
+template<typename T> void arrayList<T>::clear(){
+    //for(int i = 0; i != listSize;++i)注意不能这样写，因为listSize也会被erase
+    //改变的，所以我们必须建立一个临时的变量去把最开始的listSize接受一下，用它
+    //来进行循环控制
+    int oldListSize = listSize;
+    for(int i = 0; i != oldListSize; ++i)
+        erase(0);//把第一个一直删除listSize就好了
+}
+
+template<typename T> void arrayList<T>::removeRange(int start,int end){
+    if(start > end)
+        throw illegalParameterValues("the start must <= the end");
+    checkIndex(start);
+    checkIndex(end);
+}
+/*
+class A;
+class B;
+void print(A &a,B &b);
+class A{
+friend void print(A &a,B &b);
+public:
+    A():number(10){}
+private:
+    int number;
+};
+class B{
+friend void print(A &a,B &b);
+public:
+    B():num(20){}
+private:
+    int num;
+};
+void print(A &a,B &b){
+    std::cout<<a.number<<b.num;
+}*/
+int main()
+{
+    //A a;
+    //B b;
+    arrayList<int> array1,array2(11);
+    std::cout<<array1.capacity()<<std::endl;
+    for(int i = 0;i != 5;++i){
+        array1.insert(i,i*10);
+        array2.insert(i,i*10+1);
+    }
+    //print(a,b);
+    //std::cout<<array1.listSize;
+    //测试小于号
+    std::cout<<"the array1 < array2 ? "<<(array1<array2)<<std::endl;
+    array2.insert(5,60);
+    std::cout<<"after insert into array2 a new element,the array1 < array2? "<<(array1<array2)<<std::endl;
+    //测试==和!=
+    std::cout<<"array1 is equal to array2 ? "<<(array1 == array2)<<std::endl;
+    std::cout<<std::endl;
+
+    //输出
+    std::cout<<array1<<std::endl;
+    std::cout<<"the current array length is "<<array1.capacity()<<" and the current list size is "<<array1.size()<<std::endl;
+    array1.trimToSize();
+    std::cout<<"After the operate trimToSize()"<<std::endl
+    <<"the current array length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()
+    <<std::endl;
+    //
+    array1.setSize(10);
+    std::cout<<"After the operate setSize(10)"<<std::endl
+    <<"the current array length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()
+    <<std::endl;
+    std::cout<<array1<<std::endl;
+    //
+    array1.setSize(4);
+    std::cout<<"After the operate setSize(4)"<<std::endl
+    <<"the current array length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()
+    <<std::endl;
+    std::cout<<array1<<std::endl;
+    
+    //[]的使用
+    std::cout<<"this is the test of operator[] "<<array1[3]<<std::endl;
+    //下面这个会报错，因为超过了类似于数组越界了
+    //std::cout<<"this is the test of operator[] which is outofrange "<<array1[5]<<std::endl;
+    array1[3] = 400;
+    std::cout<<"after array1[30] = 400 array1[30] is now "<<array1[3]<<std::endl;
+    std::cout<<array1<<std::endl;
+
+    //测试==和!=
+    std::cout<<"array1 is equal to array2 ? "<<(array1 == array2)<<std::endl;
+
+    //测试push_back方法
+    std::cout<<"\nnow the listSize is "<<array1.size()<<" and the arrayLength is "
+        <<array1.capacity()<<" and the elements are\n"<<array1<<std::endl;
+    array1.push_back(200);
+    std::cout<<"after array1.push_back(200) array1's elements are "
+    <<std::endl<<array1<<"\nand the listSize is "<<array1.size()
+    <<" and the arrayLength is "<<array1.capacity()<<std::endl;
+    std::cout<<std::endl;
+
+    //测试pop_back
+    array1.pop_back();
+    std::cout<<"after pop_back the new array length is "<<array1.capacity()
+    <<" and the listSize is "<<array1.size()<<"\nand the array1 is\n"<<array1
+    <<std::endl;
+    std::cout<<std::endl;
+
+    //对swap进行测试
+    std::cout<<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()<<"\nand the array1 is \n"
+    <<array1<<std::endl;
+    std::cout<<"the current array2 length is "<<array2.capacity()
+    <<" and the current list size is "<<array2.size()<<"\nand the array2 is \n"
+    <<array2<<std::endl;
+    array1.swap(array2);
+    std::cout<<"After the operate array1.swap(array2)"<<std::endl
+    <<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()
+    <<"\nand the array1 is\n"<<array1<<std::endl;
+    std::cout<<"After the operate array1.swap(array2)"<<std::endl
+    <<"the current array2 length is "<<array2.capacity()
+    <<" and the current list size is "<<array2.size()
+    <<"\nand the array2 is\n"<<array2<<std::endl;
+
+    //测试set方法,以及reserve方法
+    std::cout<<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()<<"\nand the array1 is \n"
+    <<array1<<std::endl;
+    array1.reserve(5) ;
+    std::cout<<"After the operate array1.reserve(5)"<<std::endl
+    <<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()
+    <<"\nand the array1 is\n"<<array1<<std::endl;
+    std::cout<<std::endl;
+
+    std::cout<<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()<<"\nand the array1 is \n"
+    <<array1<<std::endl;
+    array1.reserve(20) ;
+    std::cout<<"After the operate array1.reserve(20)"<<std::endl
+    <<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()
+    <<"\nand the array1 is\n"<<array1<<std::endl;
+   
+    std::cout<<"the current array1[2] =  "<<array1[2];
+    array1.set(2,4000);
+    std::cout<<" and then after the"
+    <<" operator of array1.set(2,4000) then the array1[2] is now "
+    <<array1[2]<<std::endl;
+    std::cout<<std::endl;
+
+    //测试clear
+    std::cout<<"the current array1 length is "<<array1.capacity()
+    <<" and the current list size is "<<array1.size()<<"\nand the array1 is \n"
+    <<array1<<std::endl<<std::endl;
+    array1.clear() ;
+    std::cout<<"After the operate array1.clear()"<<std::endl<<std::endl
+    <<"the new array1 length is "<<array1.capacity()
+    <<" and the new list size is "<<array1.size()
+    <<"\nand the new array1 is\n"<<array1<<std::endl;
+   
+    return 0;
+}
+
