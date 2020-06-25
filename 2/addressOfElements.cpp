@@ -21,7 +21,7 @@ template<typename T>void addressOfElements(T *a,int n,int res[]){
 }
 template<typename T>void rearrange(T *a,int n,int res[]){
     for(int i = 0; i != n; ++i){
-        if(res[i] != i){//如果位置对应不一致的话，就把其放到它本应该到的位置中
+        while(res[i] != i){//如果位置对应不一致的话，就把其放到它本应该到的位置中
             std::swap(a[res[i]],a[i]);//把它应该对应的位置的数据，与现在其本身的数值进行交换
             std::swap(res[i],res[res[i]]);
             //注意，你不能只交换相应的元素，你也还要把相应的元素的名次一并

@@ -1,0 +1,106 @@
+1.关于友元函数的使用
+首先介绍下友元函数的由来:友元函数是为了在类外的非成员函数去访问类的私有成员和保护成员的（但是注意，友元函数的增加会破坏类的封装性，因为非类的成员函数竟然也可以去访问
+类的私有成员和保护成员了！！）。友元函数是不可以继承的，也就是说基类A的友元函数，并不能被继承到其派生类B中，也就是说A的友元函数不能访问B中自己所增加的成员（但是请注意，是
+不能访问B中新增加的成员，但是还可以访问B中的基类的成员的!!!!)下面就拿几个例子来说明一下:
+
+(1)：普通类的友元函数，可以访问类的所有成员:
+
+#include <iostream>
+class A{
+friend void printElement(const A &a);
+public:
+	A(int theElement):element(theElement){}
+    void print(){std::cout<<element<<std::endl;}
+protected:
+    int element;
+};
+void printElement(const A &a){
+    std::cout<<a.element;
+}
+这个printElement友元函数是可以访问类A中的所有成员的，这是最简单的一种友元关系。
+(2):普通基类和派生类中的友元关系，在派生类中声明的友元函数（形参是派生类的对象），可以访问从基类中继承过来的成员的
+class A {
+public:
+    A(int theElement):element(theElement){}
+    void print(){std::cout<<element<<std::endl;}
+protected:
+    int element;
+};
+
+class B : public A{
+//测试2，派生类的友元函数可以访问从基类中继承过来的成员!!!!!
+friend void printElement(const B &a);
+public:
+    B(int theElement):A(theElement){}
+    void print(){
+        A::print();
+    }
+};
+void printElement(const B &a){
+    std::cout<<a.element;
+}
+
+
+(3):普通基类和派生类中的友元关系，在基类中声明的友元函数（是可以访问基类的成员，也可以访问派生类从基类中继承过来的成员的)。
+#include <iostream>
+class B;
+class A {
+//基类的友元函数是可以通过派生类的对象去访问派生类中的基类的友元函数的!!!!
+friend  void printElement(const A &a);
+
+public:
+    A(int theElement):element(theElement){}
+    void print(){std::cout<<element<<std::endl;}
+protected:
+    int element;
+};
+
+class B : public A{
+public:
+    B(int theElement):A(theElement),number(10){}
+    void print(){
+        A::print();
+    }
+protected:
+    int number;
+};
+
+void printElement(const A &a){
+    std::cout<<a.element;//
+}
+注意，如果在printElement中访问a.number，那么就是错误的，在基类中声明的友元函数只能访问基类中的成员，所以不能访问派生类中的成员（也就是友元是不能被继承的)!!!
+
+
+(4):模板基类和模板派生类中的友元关系: 模板派生类的友元函数可以访问模板基类中的成员函数，但是访问的时候注意加上模板基类的类作用域解析符
+template<typename T>
+class A {//没有乱码
+public:
+    A(int theElement):element(theElement){}
+    void print(){std::cout<<element<<std::endl;}
+protected:
+    int element;
+};
+template<typename T>
+class B : public A<T>{
+template<typename C> friend void printElement(const B<C> &a);
+public:
+    B(int theElement):A<T>(theElement){}
+    void print(){
+        A<T>::print();
+    }
+};
+template<typename T> void printElement(const B<T> &a){
+    std::cout<<a.A<T>::element;
+    //一定要注意，使用模板基类中的成员的时候一定要加上基类的类作用域解析符!!!!
+}
+int main()
+{
+    B<int> b(100);
+    b.print();
+    //A a(1000);
+    std::cout<< "Hello world" << std::endl;
+    std::cout<<"\n";
+    printElement(b);
+    return 0;
+}
+

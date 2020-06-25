@@ -1,7 +1,12 @@
 #include "array.h"
-#include <sstream>//注意:ostringstream是在sstream中的
-#include <iterator>
-
+const std::string getClearName(const char  *name){
+    int status = 1;
+    char *clearName = abi::__cxa_demangle(name,NULL,NULL,&status);
+    const char *const demangledName = (status == 0) ? clearName : name;
+    std::string ret_val(demangledName);
+    free(clearName);
+    return ret_val;
+}
 class illegalParameterValues : public std::length_error{
 public:
     explicit illegalParameterValues(const std::string &s):length_error(s){}
@@ -56,11 +61,20 @@ template<typename T> T& arrayList<T>::get(int theIndex)const{
     checkIndex(theIndex);//先检查下下标是否在索引范围之内
     return element[theIndex];
 }
-template<typename T> int arrayList<T>::indexOf(const T &theElement)const{
+template<typename T> int arrayList<T>::indexOf(const T& theElement)const{
     //返回元素theElement第一次出现时的索引
     //若该元素不存在，则返回-1
     //查找元素theElement
-    int theIndex = 10;//(int)(std::find(element,element+listSize,theElement) - element);
+    /*
+     *template <class InputIterator, class T> InputIterator find (InputIterator first, InputIterator last, const T& val);
+     *find是从[first,last)之间查找你想要查找的参数的。也就是说，如果
+     *没有查找到的话，那么就会返回last这个迭代器的位置。
+     */
+    //std::cout<<"the element type is"<<getClearName(typeid(element).name())
+    //<<std::endl;
+    //注意,使用标准库的函数，一定要写#include，我在这个吃了个大亏。
+    //比如，你要使用find函数，你就得包含algorithm头文件才可以，要不然会报错
+    int theIndex = (int)(std::find(element,element+listSize,theElement)-element);
     if(theIndex == listSize)
         return -1;
     return theIndex;
@@ -256,14 +270,164 @@ template<typename T> void arrayList<T>::clear(){
     for(int i = 0; i != oldListSize; ++i)
         erase(0);//把第一个一直删除listSize就好了
 }
-
+//这个删除的范围是[a,b)
 template<typename T> void arrayList<T>::removeRange(int start,int end){
-    if(start > end)
+    if(start >= end)//首先检查一下start和end的关系是不是一样的
         throw illegalParameterValues("the start must <= the end");
-    checkIndex(start);
+    checkIndex(start);//再去查看两个索引是不是符合要求的
     checkIndex(end);
+
+    //如果符合要求了，我们进行删除相应的数据
+    for(int i = start;i != end;++i)
+        erase(start);
+    /*下面这个是本书的作者提供的代码
+     if(start < 0 || end > listSize)
+        throw illegalParameterValues("index must invalid_argument")
+     if(start >= end)
+        return;
+     //将相应的end后面的数据拷贝到start开始的位置
+     copy(element+end,element+listSize,element+start);
+     int newSize = listSize - end +start;
+     for(int i = newSize;i < listSize; i++)//把newSize--listSize之间的元素析构掉
+        element[i].~T();
+     listSize = newSize;
+    */
 }
-/*
+
+template<typename T> int arrayList<T>::lastIndexOf(const T& theElement)const{
+    int index = 0;
+    for(int i = 0; i != listSize; ++i){
+        if(element[i] == theElement)
+            index = i;
+    }
+    return (index==0)? -1 : index;
+}
+//这个函数的作用是倒叙排列数组
+//直接使用交换的方法就可以实现倒叙排列
+template<typename T> void arrayList<T>::reverse(){
+    //使用swap交换函数，交换位置
+    for(int i = 0,midIndex = listSize/2;i != midIndex;++i)
+        std::swap(element[i],element[listSize-i-1]);
+}
+
+template<typename T> void arrayList<T>::leftShift(int index){
+    if(index <= 0)
+        return;
+    std::copy(element+index,element+listSize,element);//将我要移动的元素
+    //都拷贝到最开始的地方，然后把后面的部分给删掉就好了
+    int oldListSize = listSize;
+    for(;listSize != oldListSize-index;--listSize)
+         element[listSize-1].~T();
+}
+
+template<typename T> void arrayList<T>::circularShift(int index){
+    //循环转移利用三次倒序翻转就可以实现循环shift
+    //第一次是对整个序列进行翻转；第二个是对前部分进行倒叙翻转；第三次是对
+    //右边进行倒序翻转，这个左边和右边主要就是根据你要移动的个数的。
+    //比如说要移动三个，那么左边就是前三个，右边就是listSize-3了
+    //但是要注意在转换的时候保留原始的信息，然后再将指针指向头位置
+    //以及listSize要变回原先的listSize
+    reverse();//第一次reverse全部
+    int leftSize = listSize - index,rightSize = index;
+    auto oldElement = element;
+    listSize = leftSize;//将左边的翻转
+    reverse();
+    element = element+leftSize;
+    listSize = rightSize;
+    reverse();
+    listSize = leftSize + rightSize;
+    element = oldElement;
+}
+
+template<typename T> void arrayList<T>::half(){
+    if(listSize==0)
+        return;//如果现在listSize是空的，我就直接返回不用删除
+    //下面这句话可以被没被注释的一句话给替换掉
+    //(listSize % 2 == 0) ? (newListSize = listSize / 2) : (newListSize = listSize / 2 + 1);
+    //以后遇到这奇偶性的东西，我们可以采用+1/2的情况，因为奇数的话+1变成偶数
+    //再去除2是可以等价于这个奇数除2再加1的；然后偶数的话加1是奇数，然后除2还是等价于
+    //偶数除2所以这个小技巧就挺好的。
+    for(int i = 1,newListSize=(listSize+1)/2;i != newListSize; ++i)
+        erase(i);
+    /*下面的程序是书本上的代码，可以借鉴
+     * 这个算法的思想是将偶数部分的数据替换为奇数部分（也就是将紧挨的，左边的
+     * 替换为右边的，然后最后把剩下的其他元素删掉，但是注意这个时候是加2走的
+     for(int i = 2; i < listSize; i + 2)
+       element[i/2] = element[i];
+     //删除多余的空间
+     int newSize = (listSize+1)/2;
+     for(int i = newSize;i < listSize;++i)
+        element[i].~T();
+     listSize = newSize;
+     */
+}
+
+//注意，这个方法使用的时候，必须本身的元素是为空的。或者小于a+b的元素
+template<typename T> void arrayList<T>::meld(const arrayList<T> &a,const arrayList<T> &b){
+    //因为listSize变大了，首先要去考虑下，我们的序列的长度是否可以达到装下所有的元素
+    delete []element;//清空
+    arrayLength = a.listSize + b.listSize;
+    element = new T[arrayLength];
+
+
+    int index = 1,newSize = std::min(a.listSize,b.listSize);
+    std::copy(a.begin(),a.end(),element);//把左边的序列拷贝到当前数组中
+    listSize = a.listSize;
+    for(int i = 0;i != newSize; ++i){//第一个循环控制插入的元素的个数
+        insert(index,b[i]);
+        index+=2;
+    }
+    std::copy(b.element+newSize,(b.element+b.listSize),element+listSize);
+    listSize = a.listSize + b.listSize;
+}
+
+template<typename T> void arrayList<T>::merge(const arrayList<T> &a,const arrayList<T> &b){
+    int ca = 0;//a的索引
+    int cb = 0;//b的索引
+    int ct = 0;//本身的索引
+
+    delete []element;//把本身的所有元素都清空
+    arrayLength = a.listSize + b.listSize;//arrayLength改变成两个序列的大小
+    element = new T[arrayLength];
+
+    while((ca < a.listSize) && (cb < b.listSize)){
+        if(a[ca] <= b[cb])
+            element[ct++]=a[ca++];
+        else
+            element[ct++]=b[cb++];
+    }
+    //处理剩下的部分
+    //也不管谁还有元素了，直接全部拷贝，没有元素的肯定拷贝的是空的
+    //剩下的那个就是剩下的元素被拷贝了
+    std::copy(a.element + ca,a.element+a.listSize,element+ct);
+    ct += a.listSize - ca;
+    std::copy(b.element + cb,b.element+b.listSize,element+ct);
+    ct += b.listSize - cb;
+    listSize = ct;
+}
+
+template<typename T> void arrayList<T>::split(arrayList<T> &a,arrayList<T> &b){
+    int ca = 0;//a的索引
+    int cb = 0;//b的索引
+
+    delete []a.element;//把a的元素清空掉
+    delete []b.element;//把b的元素清空掉
+    a.arrayLength = listSize / 2;
+    b.arrayLength = (listSize+1) / 2;
+    a.element = new T[a.arrayLength];
+    b.element = new T[b.arrayLength];
+
+    //开始切分
+    for(int i = 0; i != listSize;++i){
+        if(i % 2 == 0)
+            a.element[ca++] = element[i];
+        else
+            b.element[cb++] = element[i];
+    }
+    a.listSize = ca;
+    b.listSize = cb;
+}
+/*测试一个函数声明为两个类的友元函数
 class A;
 class B;
 void print(A &a,B &b);
@@ -284,16 +448,31 @@ private:
 void print(A &a,B &b){
     std::cout<<a.number<<b.num;
 }*/
+
+
 int main()
 {
     //A a;
     //B b;
-    arrayList<int> array1,array2(11);
+    /*测试打印数据类型的代码
+     int test_for_int = 10;
+     std::cout<<"this is the type of the test_for_int\n"<<typeid(test_for_int).name()
+     <<std::endl<<"and the complete name is\n"<<getClearName(typeid(test_for_int).name())
+     <<std::endl;
+    */
+    arrayList<int> array1,array2(11),array3(20),array4(10),array5(20);
     std::cout<<array1.capacity()<<std::endl;
     for(int i = 0;i != 5;++i){
         array1.insert(i,i*10);
         array2.insert(i,i*10+1);
+        array3.insert(i,i*10);
+        array4.insert(i,i*10);
+        array5.insert(i,i*10+1);
     }
+    array3.insert(5,40);
+    array3.insert(6,50);
+    array3.insert(7,60);
+    array3.insert(8,40);
     //print(a,b);
     //std::cout<<array1.listSize;
     //测试小于号
@@ -408,6 +587,74 @@ int main()
     <<" and the new list size is "<<array1.size()
     <<"\nand the new array1 is\n"<<array1<<std::endl;
    
+    //测试removerange
+    std::cout<<"the current array2 length is "<<array2.capacity()
+    <<" and the current list size is "<<array2.size()<<"\nand the array1 is \n"
+    <<array2<<std::endl<<std::endl;
+    array2.removeRange(0,2) ;
+    std::cout<<"After the operate array2.removeRange(0,2)"<<std::endl<<std::endl
+    <<"the new array2 length is "<<array2.capacity()
+    <<" and the new list size is "<<array2.size()
+    <<"\nand the new array2 is\n"<<array2<<std::endl;
+    
+    //测试下indexOf函数
+    std::cout<<"the content of 400's index is "<<array2.indexOf(400)
+    <<std::endl;
+    std::cout<<std::endl;
+
+    std::cout<<"the content of 40's last index is "<<array3.lastIndexOf(40)
+    <<"\nand the array3 is \n"<<array3<<std::endl;
+
+    //测试reverse
+    std::cout<<"\nthe current array3 is\n"<<array3<<std::endl;
+    array3.reverse();
+    std::cout<<"and after the operator of array3.reverse() the array3 is\n"
+    <<array3<<std::endl;
+
+    /*
+    //测试leftShift()
+    std::cout<<"the current array3 is\n"<<array3<<"\nand the array3's arrayLength is "
+    <<array3.capacity()<<" and the listSize is "<<array3.size()<<std::endl;
+    array3.leftShift(2);
+    std::cout<<"\nafter the operator of leftShift the array3 is\n"<<array3
+    <<"\nand the array3's arrayLength is "<<array3.capacity()
+    <<" and the listSize is "<<array3.size()<<std::endl;
+    */
+    //测试circularShift()
+    std::cout<<"\nthe current array3 is\n"<<array3<<"\nand the array3's arrayLength is "
+    <<array3.capacity()<<" and the listSize is "<<array3.size()<<std::endl;
+    array3.circularShift(2);
+    std::cout<<"\nafter the operator of circularShift the array3 is\n"<<array3
+    <<"\nand the array3's arrayLength is "<<array3.capacity()
+    <<" and the listSize is "<<array3.size()<<std::endl;
+
+    //测试half()   
+    std::cout<<"\nthe current array3 is\n"<<array3<<"\nand the array3's arrayLength is "
+    <<array3.capacity()<<" and the listSize is "<<array3.size()<<std::endl;
+    array3.half();
+    std::cout<<"\nafter the operator of half() the array3 is\n"<<array3
+    <<"\nand the array3's arrayLength is "<<array3.capacity()
+    <<" and the listSize is "<<array3.size()<<std::endl;
+    
+    //测试迭代器
+    std::cout<<"*array3.begin() is "<<*array3.begin()<<" and the array3[0] is "
+    <<array3[0]<<std::endl;
+
+    //测试meld;
+    /*
+    std::cout<<std::endl;
+    array1.meld(array3,array2);
+    std::cout<<"after the array1.meld(array3,array2) array1 is "<<array1<<std::endl;
+    */
+    //测试merge()
+    array1.merge(array4,array5);
+    std::cout<<"\n"<<array1<<std::endl;
+
+    //测试split()方法
+    std::cout<<"a1 is "<<array2<<"\na2 is "<<array3<<std::endl;
+    array1.split(array2,array3);
+    std::cout<<"after a1.split(a2,a3)\n"<<"a1 is now "<<array2
+    <<"\na2 is now "<<array3<<std::endl;
     return 0;
 }
 
