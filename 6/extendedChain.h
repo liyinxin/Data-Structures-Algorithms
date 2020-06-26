@@ -119,7 +119,7 @@ int main(){
 protected:
     mychainNode<T> *lastNode;
 };
-
+//不带头节点的链表对于第一个元素进行删除的时候要特别的处理一下
 template<typename T> void extendedChain<T>::erase(int theIndex){
     //注意，因为加入了新的lastNode指针，所以我们在删除的时候，要记得把尾指针给移动一下
     //查看索引是不是在有效范围之内
@@ -149,7 +149,7 @@ template<typename T> void extendedChain<T>::erase(int theIndex){
     this->listSize--;
     delete deletedNode;
 }
-
+//不带头节点的链表对于第一个位置的插入也需要特殊处理一下，与别的位置是不一样的
 template<typename T> void extendedChain<T>::insert(int theIndex,const T &theElement){
     //首先检查一下你要插入的索引是不是有效的
     if(theIndex < 0 || theIndex > this->listSize){
@@ -695,6 +695,11 @@ template<typename T> void extendedChain<T>::selectionSort(){
     }
 }
 
+/*
+ 算法思想就是找到每个元素的名次位置信息，然后在链表中进行一个一个位置找到其真正对应的
+ 元素
+ *
+ */
 template<typename T> void extendedChain<T>::countingSort(){
     //首先需要借助一个数组去存储相应的名次信息
     //分两步去实现，第一步是先建立好相应的元素的名称信息
@@ -722,11 +727,11 @@ template<typename T> void extendedChain<T>::countingSort(){
     }
     //通过上面的步骤已经得到了各个节点元素对应的名次的位置信息了
     for(int i = 0; i != this->listSize;++i){
-        while(res[i] != i){//加这个判读可以避免相等的时候重复进行swap操作
+        while(res[i] != i){//这个主要是用来让这个i对应的位置一定要找到相应的元素才可以结束
+            //这个while一定得加，只有让这个位置找到其对应的元素才可以进行下一个位置的查找
             std::swap(get(i),get(res[i]));
             std::swap(res[i],res[res[i]]);        
         }    
     }
-
 } 
 #endif
