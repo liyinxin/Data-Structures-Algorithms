@@ -1,0 +1,11 @@
+#include <vector>
+#include <string>
+#include <iostream>
+#include <utility>
+using namespace std;
+
+int main(){
+   vector<pair<const string,string> > book;
+   book.insert(book.begin(),pair<const string,string>("hell","hhhhasda"));
+   cout<<"("<<book.cbegin()->first<<","<<book.cbegin()->second<<")"<<std::endl;
+}

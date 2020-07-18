@@ -1,0 +1,108 @@
+#pragma once
+
+#ifndef __SORTARRAY__H
+#define __SORTARRAY__H
+
+#include "dictionaryForArray.h"
+#include <vector>
+#include <iostream>
+#include <algorithm>
+
+
+template<typename K,typename V>
+class sortedArray : public dictionaryForArray<K,V>{
+public:
+    sortedArray(int initialCapacity = 10) :capacities(initialCapacity),dSize(0),element(10){}
+    bool empty()const override{return dSize==0;}
+    int size()const override{return dSize;}
+    std::pair<K,V> *find(const K &)const override;
+    void erase(const K &)override;
+    void insert(const std::pair<K,V> &)override;
+    void output(std::ostream &out)const;
+    ~sortedArray();
+
+private:
+    //注意，在使用vector的时候，因为加入了const K
+    //如果K也是类的话，那么我使用它的
+    std::vector<std::pair<K,V>> element;          //存放字典
+    int capacities;                         //表示这个字典总的大小
+    int dSize;                              //表示字典当前的大小
+};
+
+//删除操作
+template<typename K,typename V> void sortedArray<K,V>::erase(const K &theKey){
+    int i = 0;
+    while(i != dSize && element[i].first < theKey)
+        i++;
+    if(i != dSize && element[i].first == theKey){//找到了的话
+        element.erase(element.begin()+i);
+        dSize--;
+    }
+    //如果没找到的话，那就什么也不做
+}
+//插入操作
+template<typename K,typename V> void sortedArray<K,V>::insert(const std::pair<K,V> &theElement){
+    int i = 0;
+    while(i != dSize && element[i].first < theElement.first)
+        i++;
+    if(i != dSize && element[i].first == theElement.first){//如果是相等的话
+        element[i].second = theElement.second;
+        return ;
+    }
+    //如果不相等的话，不用去考虑扩容问题，因为vector自带扩容性质
+    element.insert(element.begin()+i,theElement);
+    dSize++;
+    return;
+}
+//查找操作
+template<typename K,typename V> std::pair<K,V> *sortedArray<K,V>::find(const K &theKey)const{
+    int left   = 0;
+    int right  = dSize-1;
+    int middle = (left+right)/2;
+    while(left < right){
+        if(element[middle].first < theKey){//目标值在中间的右边
+            left    = middle+1;
+            middle  = (left+right)/2;
+        }else if(element[middle].first > theKey){//目标值在中间的左边
+            right   = middle;
+            middle  = (left+right)/2;
+        }else{
+            //注意，常量函数中，返回其成员的时候，返回的都是带着const的，如果你的常量函数的返回类型是指针或者引用的话
+            //就要注意一下，因为const std::pair<const K,V> *p返回的时候是不能赋予给std::pair<const K,V>的，所以这个时候
+            //有两种方法，一种是改变这个函数的常量属性；另一种是改变其返回类型，还有一种就是将其const属性去掉，跟下面的一样
+            auto temp = &(element[middle]);
+            return const_cast<std::pair<K,V> *>(temp);
+        }
+    }
+    return NULL;//如果左边都超过右边了的话，那么就是NULL了
+}
+
+//析构函数
+template<typename K,typename V> sortedArray<K,V>::~sortedArray(){
+    element.clear();
+    dSize = 0;
+}
+//output函数
+template<typename K,typename V> void sortedArray<K,V>::output(std::ostream &out)const{
+    /*
+    for_each(element.begin(),element.end(),[](decltype(element.begin()) it)
+                                    {std::cout<<"("<<it->first<<","<<it->second<<")"<<" ";});
+    */
+    for(auto i = 0;i != dSize;++i)
+        std::cout<<"("<<element[i].first<<","<<element[i].second<<")"<<" ";
+}
+#endif
+
+注意:
+		std::pari<const K,V>这个一定不能作为find的返回类型，也不能作为element的类型；
+首先，在链式结构中，我们可以这样做，是因为我们每创建一个节点的时候顺便初始化了pairNode类中的element，所以这个时候可以给其第一个const K类型的赋初值，但是
+后续的话，就可以了，因为其是const K!!!!!
+但是如果你在sortedArray中设置其类型为std::pair<const K,V>那就是找死!!!。
+	首先，如果你是用一个自定义的数组去盛放这个std::pair<const K,V>类型的话，那么其初始化完以后，这个数组就废了，因为其pair的第一个参数是const K的，
+所以插入元素的时候是不可以给这个数组赋值的，因为其const K是固定了的，不能改变的!!
+	其次，如果你使用一个vector去盛放你的std::pair<const K,V>的话，那么上面的问题是会解决的，但是又会引来新的问题。首先，vector的迭代器你不能使用了，
+这一点为什么？因为迭代器里会有赋值操作，这个操作会受const K的影响，导致出现：
+		/usr/include/c++/5/bits/stl_pair.h:170:8: error: assignment of read-only member ‘std::pair<const int, int>::first’
+  				first = std::forward<first_type>(__p.first);
+这个错误，是因为我们想把const K的值给改掉，所以是不行的。
+	那么不适用迭代器的话，就很难插入数据了，所以我们放弃const K类型，使用K类型!!!
